@@ -15,16 +15,31 @@ class ProblemSummary
     private $numProblems;
 
     /**
+     * @var int
+     */
+    private $numInspections;
+
+    /**
      * @var Problem[][]
      */
     private $problemsPerFile = [];
 
-    public function addProblem(string $fileName, Problem $problem): void
+    /**
+     * @var Problem[][]
+     */
+    private $problemsPerInspection = [];
+
+    public function addProblem(string $inspectionsFile, string $fileName, Problem $problem): void
     {
+        if (!isset($this->problemsPerInspection[$inspectionsFile])) {
+            $this->problemsPerInspection[$inspectionsFile] = [];
+            ++$this->numInspections;
+        }
         if (!isset($this->problemsPerFile[$fileName])) {
             $this->problemsPerFile[$fileName] = [];
             ++$this->numFiles;
         }
+        $this->problemsPerInspection[$inspectionsFile][] = $problem;
         $this->problemsPerFile[$fileName][] = $problem;
         ++$this->numProblems;
     }
@@ -37,6 +52,19 @@ class ProblemSummary
     public function getNumProblems(): int
     {
         return $this->numProblems;
+    }
+
+    public function getNumInspections(): int
+    {
+        return $this->numInspections;
+    }
+
+    /**
+     * @return Problem[][]
+     */
+    public function getProblemsByInspection(): array
+    {
+        return $this->problemsPerInspection;
     }
 
     /**

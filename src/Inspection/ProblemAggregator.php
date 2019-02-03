@@ -51,7 +51,7 @@ class ProblemAggregator
                     continue;
                 }
 
-                $problemSummary->addProblem($fileName, $problem);
+                $problemSummary->addProblem($inspectionsFile, $fileName, $problem);
             }
         }
 
