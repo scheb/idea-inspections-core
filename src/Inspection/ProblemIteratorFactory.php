@@ -8,6 +8,6 @@ class ProblemIteratorFactory
 {
     public function createProblemIterator(string $inspectionsFile, string $projectRoot): ProblemIterator
     {
-        return new ProblemIterator(new FileReader($inspectionsFile), new ProblemFactory(), $projectRoot);
+        return new ProblemIterator(new ProblemXmlIterator(new FileReader($inspectionsFile)), new ProblemFactory(), $projectRoot);
     }
 }

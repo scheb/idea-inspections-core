@@ -3,10 +3,10 @@
 namespace Scheb\Inspection\Core\Test\Inspection;
 
 use PHPUnit\Framework\MockObject\MockObject;
-use Scheb\Inspection\Core\FileSystem\FileReader;
 use Scheb\Inspection\Core\Inspection\Problem;
 use Scheb\Inspection\Core\Inspection\ProblemFactory;
 use Scheb\Inspection\Core\Inspection\ProblemIterator;
+use Scheb\Inspection\Core\Inspection\ProblemXmlIterator;
 use Scheb\Inspection\Core\Test\TestCase;
 
 class ProblemIteratorTest extends TestCase
@@ -19,65 +19,46 @@ class ProblemIteratorTest extends TestCase
      */
     public function getAggregator_iterateXmlFile_yieldAllProblems(): void
     {
-        $reader = $this->createReader();
-        $problem = $this->createMock(Problem::class);
-
         $problem1 = "<problem><file>file1</file>\n</problem>";
         $problem2 = '<problem><file>file2</file></problem>';
         $problem3 = '<problem><file>file3</file></problem>';
+        $xmlIterator = $this->createXmlIterator([$problem1, $problem2, $problem3]);
+
+        $problem = $this->createMock(Problem::class);
 
         $problemFactory = $this->createMock(ProblemFactory::class);
         $problemFactory
             ->expects($this->exactly(3))
             ->method('create')
             ->withConsecutive(
-                [self::PROJECT_ROOT, self::INSPECTION_FILE, new \SimpleXMLElement($problem1)],
-                [self::PROJECT_ROOT, self::INSPECTION_FILE, new \SimpleXMLElement($problem2)],
-                [self::PROJECT_ROOT, self::INSPECTION_FILE, new \SimpleXMLElement($problem3)]
+                [self::PROJECT_ROOT, self::INSPECTION_FILE, $problem1],
+                [self::PROJECT_ROOT, self::INSPECTION_FILE, $problem2],
+                [self::PROJECT_ROOT, self::INSPECTION_FILE, $problem3]
             )
             ->willReturn($problem);
 
-        $iterator = new ProblemIterator($reader, $problemFactory, self::PROJECT_ROOT);
+        $iterator = new ProblemIterator($xmlIterator, $problemFactory, self::PROJECT_ROOT);
         $result = iterator_to_array($iterator, false);
 
         $this->assertCount(3, $result);
     }
 
     /**
-     * @return FileReader|MockObject
+     * @return ProblemXmlIterator|MockObject
      */
-    private function createReader(): MockObject
+    private function createXmlIterator(array $problems): MockObject
     {
-        $xml = <<<XML
-        <problems>
-
-<problem><file>file1</file>
-</problem>
-        <problem><file>file2</file></problem>
-
-<problem><file>file3</file></problem>
-
-</problems>
-XML;
-        $chunks = str_split($xml, 5);
-        $numChunks = count($chunks);
-        $eofResponse = array_fill(0, $numChunks, false);
-        $eofResponse[] = true; // EOF reached
-
-        $reader = $this->createMock(FileReader::class);
-        $reader
+        $iterator = $this->createMock(ProblemXmlIterator::class);
+        $iterator
             ->expects($this->any())
-            ->method('eof')
-            ->willReturnOnConsecutiveCalls(...$eofResponse);
-        $reader
-            ->expects($this->exactly(count($chunks)))
-            ->method('read')
-            ->willReturnOnConsecutiveCalls(...$chunks);
-        $reader
-            ->expects($this->any())
-            ->method('getFilePath')
-            ->willReturn(self::INSPECTION_FILE);
+            ->method('getIterator')
+            ->willReturn(new \ArrayIterator($problems));
 
-        return $reader;
+        $iterator
+            ->expects($this->any())
+            ->method('getInspectionFilePath')
+            ->willReturn('InspectionFile.xml');
+
+        return $iterator;
     }
 }

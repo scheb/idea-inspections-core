@@ -23,7 +23,7 @@ class ProblemFactoryTest extends TestCase
      */
     public function create_xmlGiven_returnProblem(): void
     {
-        $xmlElement = $this->loadXmlElement();
+        $xmlElement = $this->loadXml();
         $createdProblem = $this->factory->create('/path/to/project/', '/inspections/InspectionName.xml', $xmlElement);
 
         $expectedProblem = new Problem('InspectionName', '/path/to/project/src/file', 123, 'Problem class', 'WARNING', 'Description >');
@@ -35,17 +35,15 @@ class ProblemFactoryTest extends TestCase
      */
     public function create_noProjectRoot_useRelativePath(): void
     {
-        $xmlElement = $this->loadXmlElement();
+        $xmlElement = $this->loadXml();
         $createdProblem = $this->factory->create('', '/inspections/InspectionName.xml', $xmlElement);
 
         $expectedProblem = new Problem('InspectionName', 'src/file', 123, 'Problem class', 'WARNING', 'Description >');
         $this->assertEquals($expectedProblem, $createdProblem);
     }
 
-    private function loadXmlElement(): \SimpleXMLElement
+    private function loadXml(): string
     {
-        $xml = file_get_contents(__DIR__.'/_fixtures/problem.xml');
-
-        return new \SimpleXMLElement($xml);
+        return file_get_contents(__DIR__.'/_fixtures/problem.xml');
     }
 }

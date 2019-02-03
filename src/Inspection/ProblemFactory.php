@@ -4,12 +4,14 @@ namespace Scheb\Inspection\Core\Inspection;
 
 class ProblemFactory
 {
-    public function create(string $projectRoot, string $xmlFilename, \SimpleXMLElement $problemXml): Problem
+    public function create(string $projectRoot, string $xmlFilename, string $problemXml): Problem
     {
         $projectRoot = rtrim($projectRoot, '\\/');
         if ($projectRoot) {
             $projectRoot .= '/';
         }
+
+        $problemXml = new \SimpleXMLElement($problemXml);
         $problem = new Problem(
             $this->getInspectionName($xmlFilename),
             $this->getFilename($projectRoot, $problemXml),
