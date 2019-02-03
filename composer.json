@@ -1,0 +1,34 @@
+{
+    "name": "scheb/idea-inspections-core",
+    "description": "Core classes to process IDEA inspection files",
+    "keywords": ["idea", "phpstorm", "intellij", "jetbrains", "inspections"],
+    "homepage": "https://github.com/scheb/idea-inspections-core",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Christian Scheb",
+            "email": "me@christianscheb.de"
+        }
+    ],
+    "require": {
+        "php": "^7.1.3",
+        "symfony/console": "^2.7|^3.0|^4.0",
+        "ext-simplexml": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Scheb\\Inspection\\Core\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Scheb\\Inspection\\Core\\Test\\": "tests/"
+        }
+    },
+    "config": {
+        "bin-dir": "bin"
+    }
+}
