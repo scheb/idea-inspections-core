@@ -5,6 +5,7 @@ namespace Scheb\Inspection\Core\Test\Inspection;
 use PHPUnit\Framework\MockObject\MockObject;
 use Scheb\Inspection\Core\Inspection\Problem;
 use Scheb\Inspection\Core\Inspection\ProblemAggregator;
+use Scheb\Inspection\Core\Inspection\ProblemFactory;
 use Scheb\Inspection\Core\Inspection\ProblemIterator;
 use Scheb\Inspection\Core\Inspection\ProblemIteratorFactory;
 use Scheb\Inspection\Core\Test\TestCase;
@@ -18,20 +19,27 @@ class ProblemAggregatorTest extends TestCase
      */
     private $problemIteratorFactory;
 
+    /**
+     * @var ProblemFactory|MockObject
+     */
+    private $problemFactory;
+
+    /**
+     * @var ProblemAggregator
+     */
+    private $problemAggregator;
+
     protected function setUp()
     {
         $this->problemIteratorFactory = $this->createMock(ProblemIteratorFactory::class);
-    }
-
-    private function createProblemAggregator(array $ignoreInspections, array $ignoreFiles, array $ignoreMessages): ProblemAggregator
-    {
-        return new ProblemAggregator($this->problemIteratorFactory, $ignoreInspections, $ignoreFiles, $ignoreMessages);
+        $this->problemFactory = $this->createMock(ProblemFactory::class);
+        $this->problemAggregator = new ProblemAggregator($this->problemIteratorFactory, $this->problemFactory);
     }
 
     /**
      * @return MockObject|ProblemIterator
      */
-    private function createProblemIterator(array $problems): MockObject
+    private function createProblemIteratorReturningXml(array $problems): MockObject
     {
         $iterator = $this->createMock(ProblemIterator::class);
         $iterator
@@ -46,7 +54,7 @@ class ProblemAggregatorTest extends TestCase
     {
         $map = [];
         foreach ($inspectionIterators as $inspection => $iterator) {
-            $map[] = [$inspection, self::PROJECT_PATH, $iterator];
+            $map[] = [$inspection, $iterator];
         }
 
         $this->problemIteratorFactory
@@ -55,96 +63,30 @@ class ProblemAggregatorTest extends TestCase
             ->willReturnMap($map);
     }
 
-    private function createProblem(string $file, string $message): MockObject
+    /**
+     * @test
+     */
+    public function readInspections_iterateMultipleFiles_createProblems(): void
     {
-        $problem = $this->createMock(Problem::class);
-        $problem->expects($this->any())->method('getFileName')->willReturn($file);
-        $problem->expects($this->any())->method('getDescription')->willReturn($message);
+        $iteratorFile1 = $this->createProblemIteratorReturningXml(['xml1', 'xml2']);
+        $iteratorFile2 = $this->createProblemIteratorReturningXml(['xml3']);
 
-        return $problem;
-    }
-
-    private function stubInspectionsHaveProblems(): void
-    {
-        $problemIterator1 = $this->createProblemIterator([
-            $this->createProblem('file1', 'Message1.1'),
-            $this->createProblem('file2', 'Message2'),
-        ]);
-        $problemIterator2 = $this->createProblemIterator([
-            $this->createProblem('file1', 'Message1.2'),
-            $this->createProblem('file3', 'Message3'),
-        ]);
         $this->stubProblemIteratorFactoryCreatesIterator([
-            'Inspection1.xml' => $problemIterator1,
-            'Inspection2.xml' => $problemIterator2,
+            'file1' => $iteratorFile1,
+            'file2' => $iteratorFile2,
         ]);
-    }
 
-    /**
-     * @test
-     */
-    public function readInspections_ignoredInspections_returnAllProblemsExceptInspection(): void
-    {
-        $this->problemIteratorFactory
-            ->expects($this->never())
-            ->method('createProblemIterator');
+        $this->problemFactory
+            ->expects($this->exactly(3))
+            ->method('create')
+            ->withConsecutive(
+                [self::PROJECT_PATH, 'file1', 'xml1'],
+                [self::PROJECT_PATH, 'file1', 'xml2'],
+                [self::PROJECT_PATH, 'file2', 'xml3']
+            )
+            ->willReturn($this->createMock(Problem::class));
 
-        $aggregator = $this->createProblemAggregator(['Inspection1'], [], []);
-        $returnValue = $aggregator->readInspections(['Inspection1.xml'], self::PROJECT_PATH);
-        $this->assertCount(0, $returnValue->getProblemsByFile());
-    }
-
-    /**
-     * @test
-     */
-    public function readInspections_givenInspectionFiles_createAggregate(): void
-    {
-        $this->stubInspectionsHaveProblems();
-        $aggregator = $this->createProblemAggregator([], [], []);
-        $returnValue = $aggregator->readInspections(['Inspection1.xml', 'Inspection2.xml'], self::PROJECT_PATH);
-
-        $problemsPerFile = $returnValue->getProblemsByFile();
-        $this->assertArrayHasKey('file1', $problemsPerFile);
-        $this->assertCount(2, $problemsPerFile['file1']);
-        $this->assertArrayHasKey('file2', $problemsPerFile);
-        $this->assertCount(1, $problemsPerFile['file2']);
-        $this->assertArrayHasKey('file3', $problemsPerFile);
-        $this->assertCount(1, $problemsPerFile['file3']);
-    }
-
-    /**
-     * @test
-     */
-    public function readInspections_ignoreFile1_returnAllProblemsExceptFile1(): void
-    {
-        $this->stubInspectionsHaveProblems();
-        $aggregator = $this->createProblemAggregator([], ['file1'], []);
-        $returnValue = $aggregator->readInspections(['Inspection1.xml', 'Inspection2.xml'], self::PROJECT_PATH);
-
-        $problemsPerFile = $returnValue->getProblemsByFile();
-        $this->assertArrayNotHasKey('file1', $problemsPerFile);
-
-        $this->assertArrayHasKey('file2', $problemsPerFile);
-        $this->assertCount(1, $problemsPerFile['file2']);
-        $this->assertArrayHasKey('file3', $problemsPerFile);
-        $this->assertCount(1, $problemsPerFile['file3']);
-    }
-
-    /**
-     * @test
-     */
-    public function readInspections_ignoreMessage1_returnAllProblemsExceptFile1(): void
-    {
-        $this->stubInspectionsHaveProblems();
-        $aggregator = $this->createProblemAggregator([], [], ['Message1']);
-        $returnValue = $aggregator->readInspections(['Inspection1.xml', 'Inspection2.xml'], self::PROJECT_PATH);
-
-        $problemsPerFile = $returnValue->getProblemsByFile();
-        $this->assertArrayNotHasKey('file1', $problemsPerFile);
-
-        $this->assertArrayHasKey('file2', $problemsPerFile);
-        $this->assertCount(1, $problemsPerFile['file2']);
-        $this->assertArrayHasKey('file3', $problemsPerFile);
-        $this->assertCount(1, $problemsPerFile['file3']);
+        $summary = $this->problemAggregator->readInspections(['file1', 'file2'], self::PROJECT_PATH);
+        $this->assertEquals(3, $summary->getNumProblems());
     }
 }

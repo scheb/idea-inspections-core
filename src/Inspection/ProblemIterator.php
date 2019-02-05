@@ -7,30 +7,66 @@ class ProblemIterator implements \IteratorAggregate
     /**
      * @var ProblemXmlIterator
      */
-    private $iterator;
+    private $problemXmlIterator;
 
     /**
-     * @var ProblemFactory
+     * @var string[]
      */
-    private $problemFactory;
+    private $ignoreInspectionsRegex;
 
     /**
-     * @var string
+     * @var string[]
      */
-    private $projectRoot;
+    private $ignoreFilesRegex;
 
-    public function __construct(ProblemXmlIterator $iterator, ProblemFactory $problemFactory, string $projectRoot)
+    /**
+     * @var string[]
+     */
+    private $ignoreMessagesRegex;
+
+    public function __construct(ProblemXmlIterator $problemXmlIterator, array $ignoreInspections, array $ignoreFiles, array $ignoreMessages)
     {
-        $this->iterator = $iterator;
-        $this->problemFactory = $problemFactory;
-        $this->projectRoot = $projectRoot;
+        $this->ignoreInspectionsRegex = array_map([$this, 'createRegex'], $ignoreInspections);
+        $this->ignoreFilesRegex = array_map([$this, 'createRegex'], $ignoreFiles);
+        $this->ignoreMessagesRegex = array_map([$this, 'createRegex'], $ignoreMessages);
+        $this->problemXmlIterator = $problemXmlIterator;
     }
 
     public function getIterator(): \Traversable
     {
-        $inspectionFile = $this->iterator->getInspectionFilePath();
-        foreach ($this->iterator as $problemXml) {
-            yield $this->problemFactory->create($this->projectRoot, $inspectionFile, $problemXml);
+        if ($this->matchRegex($this->problemXmlIterator->getInspectionFilePath(), $this->ignoreInspectionsRegex)) {
+            return;
         }
+
+        foreach ($this->problemXmlIterator as $problemXml) {
+            $problemXmlElement = new \SimpleXMLElement($problemXml);
+            $description = $problemXmlElement->description ?? '';
+            $fileName = $problemXmlElement->file ?? '';
+
+            if ($this->matchRegex($fileName, $this->ignoreFilesRegex)) {
+                continue;
+            }
+            if ($this->matchRegex($description, $this->ignoreMessagesRegex)) {
+                continue;
+            }
+
+            yield $problemXml;
+        }
+    }
+
+    private function createRegex(string $pattern): string
+    {
+        return '#'.str_replace('#', '\\#', $pattern).'#';
+    }
+
+    private function matchRegex(string $value, array $patterns): bool
+    {
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $value)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

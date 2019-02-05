@@ -3,62 +3,77 @@
 namespace Scheb\Inspection\Core\Test\Inspection;
 
 use PHPUnit\Framework\MockObject\MockObject;
-use Scheb\Inspection\Core\Inspection\Problem;
-use Scheb\Inspection\Core\Inspection\ProblemFactory;
 use Scheb\Inspection\Core\Inspection\ProblemIterator;
 use Scheb\Inspection\Core\Inspection\ProblemXmlIterator;
 use Scheb\Inspection\Core\Test\TestCase;
 
 class ProblemIteratorTest extends TestCase
 {
-    private const INSPECTION_FILE = 'InspectionFile.xml';
-    private const PROJECT_ROOT = '/project/root';
+    private const PROBLEM1_XML = '<problem><file>file1</file><description>description1</description></problem>';
+    private const PROBLEM2_XML = '<problem><file>file2</file><description>description2</description></problem>';
+    private const PROBLEM3_XML = '<problem><file>file3</file><description>description3</description></problem>';
 
-    /**
-     * @test
-     */
-    public function getAggregator_iterateXmlFile_yieldAllProblems(): void
+    private function createProblemIterator(ProblemXmlIterator $problemXmlIterator, array $ignoreInspections, array $ignoreFiles, array $ignoreMessages): ProblemIterator
     {
-        $problem1 = "<problem><file>file1</file>\n</problem>";
-        $problem2 = '<problem><file>file2</file></problem>';
-        $problem3 = '<problem><file>file3</file></problem>';
-        $xmlIterator = $this->createXmlIterator([$problem1, $problem2, $problem3]);
-
-        $problem = $this->createMock(Problem::class);
-
-        $problemFactory = $this->createMock(ProblemFactory::class);
-        $problemFactory
-            ->expects($this->exactly(3))
-            ->method('create')
-            ->withConsecutive(
-                [self::PROJECT_ROOT, self::INSPECTION_FILE, $problem1],
-                [self::PROJECT_ROOT, self::INSPECTION_FILE, $problem2],
-                [self::PROJECT_ROOT, self::INSPECTION_FILE, $problem3]
-            )
-            ->willReturn($problem);
-
-        $iterator = new ProblemIterator($xmlIterator, $problemFactory, self::PROJECT_ROOT);
-        $result = iterator_to_array($iterator, false);
-
-        $this->assertCount(3, $result);
+        return new ProblemIterator($problemXmlIterator, $ignoreInspections, $ignoreFiles, $ignoreMessages);
     }
 
     /**
      * @return ProblemXmlIterator|MockObject
      */
-    private function createXmlIterator(array $problems): MockObject
-    {
-        $iterator = $this->createMock(ProblemXmlIterator::class);
+    private function createXmlIterator(): MockObject
+    {        $iterator = $this->createMock(ProblemXmlIterator::class);
         $iterator
             ->expects($this->any())
             ->method('getIterator')
-            ->willReturn(new \ArrayIterator($problems));
+            ->willReturn(new \ArrayIterator([
+                self::PROBLEM1_XML,
+                self::PROBLEM2_XML,
+                self::PROBLEM3_XML
+            ]));
 
         $iterator
             ->expects($this->any())
             ->method('getInspectionFilePath')
-            ->willReturn('InspectionFile.xml');
+            ->willReturn('InspectionFile1.xml');
 
         return $iterator;
+    }
+
+    /**
+     * @test
+     */
+    public function getAggregator_ignoredInspections_returnAllProblemsExceptInspection(): void
+    {
+        $xmlIterator = $this->createXmlIterator();
+
+        $iterator = $this->createProblemIterator($xmlIterator, ['InspectionFile1'], [], []);
+        $result = iterator_to_array($iterator, false);
+
+        $this->assertCount(0, $result);
+    }
+
+    /**
+     * @test
+     */
+    public function getAggregator_ignoreFile1_returnAllProblemsExceptFile1(): void
+    {
+        $xmlIterator = $this->createXmlIterator();
+        $iterator = $this->createProblemIterator($xmlIterator, [], ['file[0-1]'], []);
+        $result = iterator_to_array($iterator, false);
+
+        $this->assertCount(2, $result);
+    }
+
+    /**
+     * @test
+     */
+    public function getAggregator_ignoreMessage1_returnAllProblemsExceptFile1(): void
+    {
+        $xmlIterator = $this->createXmlIterator();
+        $iterator = $this->createProblemIterator($xmlIterator, [], [], ['description[2-3]']);
+        $result = iterator_to_array($iterator, false);
+
+        $this->assertCount(1, $result);
     }
 }

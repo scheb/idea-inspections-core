@@ -17,19 +17,25 @@ class ProblemSummaryTest extends TestCase
     protected function setUp()
     {
         $this->problemSummary = new ProblemSummary();
-        $this->problemSummary->addProblem('InspectionFile1.xml', 'file1', $this->createProblem());
-        $this->problemSummary->addProblem('InspectionFile1.xml', 'file2', $this->createProblem());
-        $this->problemSummary->addProblem('InspectionFile2.xml', 'file1', $this->createProblem());
-        $this->problemSummary->addProblem('InspectionFile2.xml', 'file2', $this->createProblem());
-        $this->problemSummary->addProblem('InspectionFile2.xml', 'file3', $this->createProblem());
+        $this->problemSummary->addProblem('InspectionFile1.xml', $this->createProblem('file1'));
+        $this->problemSummary->addProblem('InspectionFile1.xml', $this->createProblem('file2'));
+        $this->problemSummary->addProblem('InspectionFile2.xml', $this->createProblem('file1'));
+        $this->problemSummary->addProblem('InspectionFile2.xml', $this->createProblem('file2'));
+        $this->problemSummary->addProblem('InspectionFile2.xml', $this->createProblem('file3'));
     }
 
     /**
      * @return Problem|MockObject
      */
-    private function createProblem(): MockObject
+    private function createProblem(string $fileName): MockObject
     {
-        return $this->createMock(Problem::class);
+        $problem = $this->createMock(Problem::class);
+        $problem
+            ->expects($this->any())
+            ->method('getFileName')
+            ->willReturn($fileName);
+
+        return $problem;
     }
 
     /**

@@ -29,8 +29,9 @@ class ProblemSummary
      */
     private $problemsPerInspection = [];
 
-    public function addProblem(string $inspectionsFile, string $fileName, Problem $problem): void
+    public function addProblem(string $inspectionsFile, Problem $problem): void
     {
+        $fileName = $problem->getFileName();
         if (!isset($this->problemsPerInspection[$inspectionsFile])) {
             $this->problemsPerInspection[$inspectionsFile] = [];
             ++$this->numInspections;
