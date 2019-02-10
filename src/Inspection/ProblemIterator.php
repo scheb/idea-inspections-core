@@ -24,12 +24,18 @@ class ProblemIterator implements \IteratorAggregate
      */
     private $ignoreMessagesRegex;
 
-    public function __construct(ProblemXmlIterator $problemXmlIterator, array $ignoreInspections, array $ignoreFiles, array $ignoreMessages)
+    /**
+     * @var array
+     */
+    private $ignoreSeverity;
+
+    public function __construct(ProblemXmlIterator $problemXmlIterator, array $ignoreInspections, array $ignoreFiles, array $ignoreMessages, array $ignoreSeverity)
     {
+        $this->problemXmlIterator = $problemXmlIterator;
         $this->ignoreInspectionsRegex = array_map([$this, 'createRegex'], $ignoreInspections);
         $this->ignoreFilesRegex = array_map([$this, 'createRegex'], $ignoreFiles);
         $this->ignoreMessagesRegex = array_map([$this, 'createRegex'], $ignoreMessages);
-        $this->problemXmlIterator = $problemXmlIterator;
+        $this->ignoreSeverity = $ignoreSeverity;
     }
 
     public function getIterator(): \Traversable
@@ -42,11 +48,15 @@ class ProblemIterator implements \IteratorAggregate
             $problemXmlElement = new \SimpleXMLElement($problemXml);
             $description = $problemXmlElement->description ?? '';
             $fileName = $problemXmlElement->file ?? '';
+            $severity = $problemXmlElement->problem_class['severity'] ?? '';
 
             if ($this->matchRegex($fileName, $this->ignoreFilesRegex)) {
                 continue;
             }
             if ($this->matchRegex($description, $this->ignoreMessagesRegex)) {
+                continue;
+            }
+            if (in_array($severity, $this->ignoreSeverity)) {
                 continue;
             }
 

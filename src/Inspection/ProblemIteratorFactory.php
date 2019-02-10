@@ -21,11 +21,17 @@ class ProblemIteratorFactory
      */
     private $ignoreMessages;
 
-    public function __construct(array $ignoreInspections, array $ignoreFiles, array $ignoreMessages)
+    /**
+     * @var array
+     */
+    private $ignoreSeverity;
+
+    public function __construct(array $ignoreInspections, array $ignoreFiles, array $ignoreMessages, array $ignoreSeverity)
     {
         $this->ignoreInspections = $ignoreInspections;
         $this->ignoreFiles = $ignoreFiles;
         $this->ignoreMessages = $ignoreMessages;
+        $this->ignoreSeverity = $ignoreSeverity;
     }
 
     public function createProblemIterator(string $inspectionsFile): ProblemIterator
@@ -34,7 +40,8 @@ class ProblemIteratorFactory
             new ProblemXmlIterator(new FileReader($inspectionsFile)),
             $this->ignoreInspections,
             $this->ignoreFiles,
-            $this->ignoreMessages
+            $this->ignoreMessages,
+            $this->ignoreSeverity
         );
     }
 }
